@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RotaTruck - Rotas de Carga</title>
+  <title>RutaTruck - Rotas de Carga</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
   
@@ -14,7 +14,7 @@
 <body>
 
   <div class="sidebar">
-    <h2>🚚 RotaTruck - Rota Segura</h2>
+    <h2>🚚 RutaTruck - Rota Segura</h2>
     
     <form id="truck-form" autocomplete="off">
       <h3>1. Dados do Veículo</h3>
@@ -33,17 +33,17 @@
 
       <h3>2. Trajeto</h3>
       
-      <!-- Campo Origem com Autocompletar e GPS -->
+      <!-- Origem -->
       <div class="form-group autocomplete-container">
         <label>Origem:</label>
         <div class="input-with-btn">
           <input type="text" id="origin" placeholder="Digite uma cidade ou endereço..." required>
-          <button type="button" id="btn-gps" title="Usar minha localização">📍 GPS</button>
+          <button type="button" id="btn-gps" onclick="pegarLocalizacaoGPS()">📍 GPS</button>
         </div>
         <div id="origin-suggestions" class="suggestions-list hidden"></div>
       </div>
 
-      <!-- Campo Destino com Autocompletar -->
+      <!-- Destino -->
       <div class="form-group autocomplete-container">
         <label>Destino:</label>
         <input type="text" id="destination" placeholder="Digite uma cidade ou endereço..." required>
