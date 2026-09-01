@@ -8,11 +8,12 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap'
 }).addTo(map);
 
-let routeLayer = null;
+let safeRouteLayer = null;
+let fastRouteLayer = null;
 let selectedOriginCoords = null;
 let selectedDestCoords = null;
 
-// 2. Geocoding Principal
+// 2. Geocoding
 async function getCoordinates(locationName) {
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationName)}&limit=1`;
   const response = await fetch(url);
@@ -25,7 +26,7 @@ async function getCoordinates(locationName) {
   }
 }
 
-// 3. Função de Autocompletar
+// 3. Autocompletar
 function setupAutocomplete(inputId, suggestionsId, onSelect) {
   const input = document.getElementById(inputId);
   const suggestionsBox = document.getElementById(suggestionsId);
@@ -79,10 +80,9 @@ function setupAutocomplete(inputId, suggestionsId, onSelect) {
   });
 }
 
-// 4. Função do GPS
+// 4. GPS
 function pegarLocalizacaoGPS() {
   const btnGps = document.getElementById('btn-gps');
-  
   if (!navigator.geolocation) {
     alert("Seu navegador não suporta geolocalização.");
     return;
@@ -108,24 +108,44 @@ function pegarLocalizacaoGPS() {
     },
     (error) => {
       btnGps.innerText = "📍 GPS";
-      alert("Erro ao pegar GPS. Verifique se a localização está permitida no navegador/celular.");
+      alert("Erro ao obter GPS.");
     },
     { enableHighAccuracy: true, timeout: 10000 }
   );
 }
 
-// Inicializa Autocompletar após o carregamento da página
 document.addEventListener('DOMContentLoaded', () => {
   setupAutocomplete('origin', 'origin-suggestions', (coords) => { selectedOriginCoords = coords; });
   setupAutocomplete('destination', 'dest-suggestions', (coords) => { selectedDestCoords = coords; });
 });
 
-// 5. Submit do Formulário
+// 5. Função para consultar a API OpenRouteService
+async function fetchRoute(profile, coordinates, restrictions = null) {
+  const url = `https://api.openrouteservice.org/v2/directions/${profile}/geojson`;
+  
+  const requestBody = { coordinates };
+  if (restrictions) {
+    requestBody.options = { profile_params: { restrictions } };
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': API_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(requestBody)
+  });
+
+  return await response.json();
+}
+
+// 6. Submissão e Comparação de Rotas
 document.getElementById('truck-form').addEventListener('submit', async (e) => {
   e.preventDefault();
 
   const btn = document.getElementById('btn-calculate');
-  btn.innerText = "Calculando rota...";
+  btn.innerText = "Calculando comparativo...";
   btn.disabled = true;
 
   try {
@@ -137,58 +157,77 @@ document.getElementById('truck-form').addEventListener('submit', async (e) => {
 
     const originCoords = selectedOriginCoords || await getCoordinates(originText);
     const destCoords = selectedDestCoords || await getCoordinates(destText);
+    const coordsPair = [originCoords, destCoords];
 
-    const url = 'https://api.openrouteservice.org/v2/directions/driving-hgv/geojson';
-    const requestBody = {
-      coordinates: [originCoords, destCoords],
-      options: {
-        profile_params: {
-          restrictions: { height, width, weight }
-        }
+    // Faz as 2 chamadas simultaneamente
+    const [safeData, fastData] = await Promise.all([
+      fetchRoute('driving-hgv', coordsPair, { height, width, weight }),
+      fetchRoute('driving-car', coordsPair)
+    ]);
+
+    if (safeData.features && safeData.features.length > 0) {
+      const safeSummary = safeData.features[0].properties.summary;
+      const fastSummary = fastData.features[0].properties.summary;
+
+      const safeDistKm = (safeSummary.distance / 1000).toFixed(1);
+      const safeTimeMin = Math.round(safeSummary.duration / 60);
+
+      const fastDistKm = (fastSummary.distance / 1000).toFixed(1);
+      const fastTimeMin = Math.round(fastSummary.duration / 60);
+
+      // Preenche dados no painel
+      document.getElementById('dist-val').innerText = safeDistKm;
+      document.getElementById('time-val').innerText = safeTimeMin;
+      
+      document.getElementById('fast-dist-val').innerText = fastDistKm;
+      document.getElementById('fast-time-val').innerText = fastTimeMin;
+
+      // Calcula a diferença entre as rotas
+      const diffDist = (safeDistKm - fastDistKm).toFixed(1);
+      const diffTime = safeTimeMin - fastTimeMin;
+
+      const alertBox = document.getElementById('alert-box');
+      if (diffDist > 0.5 || diffTime > 2) {
+        document.getElementById('diff-dist').innerText = Math.max(0, diffDist);
+        document.getElementById('diff-time').innerText = Math.max(0, diffTime);
+        alertBox.classList.remove('hidden');
+      } else {
+        alertBox.classList.add('hidden');
       }
-    };
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    const data = await response.json();
-
-    if (data.features && data.features.length > 0) {
-      const summary = data.features[0].properties.summary;
-      document.getElementById('dist-val').innerText = (summary.distance / 1000).toFixed(1);
-      document.getElementById('time-val').innerText = Math.round(summary.duration / 60);
       document.getElementById('route-info').classList.remove('hidden');
 
-      renderRouteOnMap(data);
+      // Desenha as duas rotas no mapa
+      renderRoutesOnMap(safeData, fastData);
     } else {
-      alert('Não foi possível calcular a rota para esses pontos com as restrições informadas.');
+      alert('Não foi possível calcular a rota com as restrições informadas.');
     }
 
   } catch (error) {
     console.error(error);
-    alert(error.message || 'Erro ao calcular a rota.');
+    alert(error.message || 'Erro ao comunicar com a API de rotas.');
   } finally {
-    btn.innerText = "Calcular Rota Segura";
+    btn.innerText = "Calcular e Comparar Rotas";
     btn.disabled = false;
     selectedOriginCoords = null;
     selectedDestCoords = null;
   }
 });
 
-function renderRouteOnMap(geojsonData) {
-  if (routeLayer) {
-    map.removeLayer(routeLayer);
-  }
+// 7. Renderiza as duas linhas no mapa
+function renderRoutesOnMap(safeGeojson, fastGeojson) {
+  if (safeRouteLayer) map.removeLayer(safeRouteLayer);
+  if (fastRouteLayer) map.removeLayer(fastRouteLayer);
 
-  routeLayer = L.geoJSON(geojsonData, {
-    style: { color: '#0284c7', weight: 6, opacity: 0.8 }
+  // Linha Vermelha (Rota Mais Rápida / Sem Restrições)
+  fastRouteLayer = L.geoJSON(fastGeojson, {
+    style: { color: '#ef4444', weight: 4, opacity: 0.6, dashArray: '8, 8' }
   }).addTo(map);
 
-  map.fitBounds(routeLayer.getBounds());
+  // Linha Azul (Rota Segura Caminhão)
+  safeRouteLayer = L.geoJSON(safeGeojson, {
+    style: { color: '#0284c7', weight: 6, opacity: 0.9 }
+  }).addTo(map);
+
+  map.fitBounds(safeRouteLayer.getBounds());
 }
