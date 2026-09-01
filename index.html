@@ -50,13 +50,28 @@
         <div id="dest-suggestions" class="suggestions-list hidden"></div>
       </div>
 
-      <button type="submit" id="btn-calculate">Calcular Rota Segura</button>
+      <button type="submit" id="btn-calculate">Calcular e Comparar Rotas</button>
     </form>
 
+    <!-- Painel de Comparação de Rotas -->
     <div id="route-info" class="card hidden">
-      <h3>Detalhes da Viagem</h3>
-      <p><strong>Distância:</strong> <span id="dist-val">-</span> km</p>
-      <p><strong>Tempo Estimado:</strong> <span id="time-val">-</span> min</p>
+      <h3>📊 Comparativo de Rotas</h3>
+      
+      <div class="comparison-box safe-box">
+        <h4>🔵 Rota Segura (Caminhão)</h4>
+        <p><strong>Distância:</strong> <span id="dist-val">-</span> km</p>
+        <p><strong>Tempo Estimado:</strong> <span id="time-val">-</span> min</p>
+      </div>
+
+      <div class="comparison-box fast-box">
+        <h4>🔴 Rota Mais Rápida (Sem Restrição)</h4>
+        <p><strong>Distância:</strong> <span id="fast-dist-val">-</span> km</p>
+        <p><strong>Tempo Estimado:</strong> <span id="fast-time-val">-</span> min</p>
+      </div>
+
+      <div id="alert-box" class="alert-info hidden">
+        ⚠️ <strong>Alerta de Restrição:</strong> A Rota Segura faz um desvio de <span id="diff-dist">0</span> km (+<span id="diff-time">0</span> min) para evitar viadutos baixos ou pontes com limite de peso.
+      </div>
     </div>
   </div>
 
