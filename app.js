@@ -9,12 +9,10 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 let routeLayer = null;
-
-// Variables para armazenar coordenadas selecionadas pelo autocompletar (opcional)
 let selectedOriginCoords = null;
 let selectedDestCoords = null;
 
-// 2. Geocoding / Busca de Endereços
+// 2. Geocoding Principal
 async function getCoordinates(locationName) {
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(locationName)}&limit=1`;
   const response = await fetch(url);
@@ -31,6 +29,8 @@ async function getCoordinates(locationName) {
 function setupAutocomplete(inputId, suggestionsId, onSelect) {
   const input = document.getElementById(inputId);
   const suggestionsBox = document.getElementById(suggestionsId);
+  if (!input || !suggestionsBox) return;
+
   let timeout = null;
 
   input.addEventListener('input', () => {
@@ -43,7 +43,6 @@ function setupAutocomplete(inputId, suggestionsId, onSelect) {
       return;
     }
 
-    // Debounce para economizar requisições
     timeout = setTimeout(async () => {
       try {
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=br`;
@@ -73,7 +72,6 @@ function setupAutocomplete(inputId, suggestionsId, onSelect) {
     }, 400);
   });
 
-  // Ocultar sugestões ao clicar fora
   document.addEventListener('click', (e) => {
     if (!input.contains(e.target) && !suggestionsBox.contains(e.target)) {
       suggestionsBox.classList.add('hidden');
@@ -81,19 +79,16 @@ function setupAutocomplete(inputId, suggestionsId, onSelect) {
   });
 }
 
-// Ativa o autocompletar nos dois campos
-setupAutocomplete('origin', 'origin-suggestions', (coords) => { selectedOriginCoords = coords; });
-setupAutocomplete('destination', 'dest-suggestions', (coords) => { selectedDestCoords = coords; });
-
-// 4. Funcionalidade de GPS (Usar Minha Localização)
-document.getElementById('btn-gps').addEventListener('click', () => {
+// 4. Função do GPS
+function pegarLocalizacaoGPS() {
+  const btnGps = document.getElementById('btn-gps');
+  
   if (!navigator.geolocation) {
     alert("Seu navegador não suporta geolocalização.");
     return;
   }
 
-  const btnGps = document.getElementById('btn-gps');
-  btnGps.innerText = "⏳...";
+  btnGps.innerText = "⏳ Busca...";
 
   navigator.geolocation.getCurrentPosition(
     async (position) => {
@@ -101,7 +96,6 @@ document.getElementById('btn-gps').addEventListener('click', () => {
       const lng = position.coords.longitude;
       selectedOriginCoords = [lng, lat];
 
-      // Busca o nome do endereço reverso para preencher o campo
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
         const data = await res.json();
@@ -114,9 +108,16 @@ document.getElementById('btn-gps').addEventListener('click', () => {
     },
     (error) => {
       btnGps.innerText = "📍 GPS";
-      alert("Não foi possível obter sua localização. Verifique as permissões de GPS no seu navegador.");
-    }
+      alert("Erro ao pegar GPS. Verifique se a localização está permitida no navegador/celular.");
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
   );
+}
+
+// Inicializa Autocompletar após o carregamento da página
+document.addEventListener('DOMContentLoaded', () => {
+  setupAutocomplete('origin', 'origin-suggestions', (coords) => { selectedOriginCoords = coords; });
+  setupAutocomplete('destination', 'dest-suggestions', (coords) => { selectedDestCoords = coords; });
 });
 
 // 5. Submit do Formulário
@@ -134,7 +135,6 @@ document.getElementById('truck-form').addEventListener('submit', async (e) => {
     const originText = document.getElementById('origin').value;
     const destText = document.getElementById('destination').value;
 
-    // Obtém coordenadas (se não foram selecionadas direto pelo autocompletar/GPS)
     const originCoords = selectedOriginCoords || await getCoordinates(originText);
     const destCoords = selectedDestCoords || await getCoordinates(destText);
 
@@ -176,7 +176,6 @@ document.getElementById('truck-form').addEventListener('submit', async (e) => {
   } finally {
     btn.innerText = "Calcular Rota Segura";
     btn.disabled = false;
-    // Reseta coordenadas armazenadas para futuras buscas manuais
     selectedOriginCoords = null;
     selectedDestCoords = null;
   }
