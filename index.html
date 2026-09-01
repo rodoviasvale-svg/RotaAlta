@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RutaTruck - Rotas de Carga</title>
+  <title>RotaTruck - Rotas de Carga</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
   
-  <!-- Leaflet CSS & JS (Substitui a biblioteca da HERE) -->
+  <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 
   <div class="sidebar">
-    <h2>🚚 RutaTruck - Rota Segura</h2>
+    <h2>🚚 RotaTruck - Rota Segura</h2>
     
-    <form id="truck-form">
+    <form id="truck-form" autocomplete="off">
       <h3>1. Dados do Veículo</h3>
       <div class="form-group">
         <label>Altura (m):</label>
@@ -32,13 +32,22 @@
       </div>
 
       <h3>2. Trajeto</h3>
-      <div class="form-group">
+      
+      <!-- Campo Origem com Autocompletar e GPS -->
+      <div class="form-group autocomplete-container">
         <label>Origem:</label>
-        <input type="text" id="origin" value="São Paulo" placeholder="Ex: São Paulo, SP" required>
+        <div class="input-with-btn">
+          <input type="text" id="origin" placeholder="Digite uma cidade ou endereço..." required>
+          <button type="button" id="btn-gps" title="Usar minha localização">📍 GPS</button>
+        </div>
+        <div id="origin-suggestions" class="suggestions-list hidden"></div>
       </div>
-      <div class="form-group">
+
+      <!-- Campo Destino com Autocompletar -->
+      <div class="form-group autocomplete-container">
         <label>Destino:</label>
-        <input type="text" id="destination" value="Curitiba" placeholder="Ex: Curitiba, PR" required>
+        <input type="text" id="destination" placeholder="Digite uma cidade ou endereço..." required>
+        <div id="dest-suggestions" class="suggestions-list hidden"></div>
       </div>
 
       <button type="submit" id="btn-calculate">Calcular Rota Segura</button>
