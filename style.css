@@ -52,3 +52,58 @@ button:hover { background: #0369a1; }
   .sidebar { width: 100%; height: 50vh; }
   #map { height: 50vh; }
 }
+/* Container do input com botão de GPS */
+.input-with-btn {
+  display: flex;
+  gap: 8px;
+}
+
+.input-with-btn input {
+  flex: 1;
+}
+
+#btn-gps {
+  width: auto;
+  margin-top: 0;
+  padding: 0 12px;
+  background: #334155;
+  border: 1px solid #475569;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+#btn-gps:hover {
+  background: #475569;
+}
+
+/* Lista de Autocompletar */
+.autocomplete-container {
+  position: relative;
+}
+
+.suggestions-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.suggestion-item {
+  padding: 10px;
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  cursor: pointer;
+  border-bottom: 1px solid #1e293b;
+}
+
+.suggestion-item:hover {
+  background: #0284c7;
+  color: white;
+}
