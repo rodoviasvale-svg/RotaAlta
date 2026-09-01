@@ -107,3 +107,41 @@ button:hover { background: #0369a1; }
   background: #0284c7;
   color: white;
 }
+
+/* Estilos para o Card de Comparação */
+.comparison-box {
+  padding: 10px;
+  border-radius: 6px;
+  margin-top: 10px;
+}
+
+.comparison-box h4 {
+  margin: 0 0 5px 0;
+  font-size: 0.95rem;
+}
+
+.comparison-box p {
+  margin: 3px 0;
+  font-size: 0.85rem;
+}
+
+.safe-box {
+  background: rgba(2, 132, 199, 0.15);
+  border-left: 4px solid #0284c7;
+}
+
+.fast-box {
+  background: rgba(239, 68, 68, 0.15);
+  border-left: 4px solid #ef4444;
+}
+
+.alert-info {
+  margin-top: 12px;
+  padding: 10px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: #fbbf24;
+  line-height: 1.4;
+}
