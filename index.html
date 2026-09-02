@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RotaTruck - Rotas de Carga</title>
+  <title>RotaTruck - Diagnóstico de Rota</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
   
@@ -14,10 +14,10 @@
 <body>
 
   <div class="sidebar">
-    <h2>🚚 RotaTruck - Rota Segura</h2>
+    <h2>🚚 RotaTruck - Diagnóstico de Rota</h2>
     
     <form id="truck-form" autocomplete="off">
-      <h3>1. Dados do Veículo</h3>
+      <h3>1. Dimensões do Veículo</h3>
       <div class="form-group">
         <label>Altura (m):</label>
         <input type="number" id="height" step="0.1" value="4.2" required>
@@ -50,27 +50,21 @@
         <div id="dest-suggestions" class="suggestions-list hidden"></div>
       </div>
 
-      <button type="submit" id="btn-calculate">Calcular e Comparar Rotas</button>
+      <button type="submit" id="btn-calculate">Analisar Pontos de Alerta</button>
     </form>
 
-    <!-- Painel de Comparação de Rotas -->
+    <!-- Card de Alertas e Diagnóstico -->
     <div id="route-info" class="card hidden">
-      <h3>📊 Comparativo de Rotas</h3>
+      <h3>📊 Resumo da Viagem</h3>
       
-      <div class="comparison-box safe-box">
-        <h4>🔵 Rota Segura (Caminhão)</h4>
-        <p><strong>Distância:</strong> <span id="dist-val">-</span> km</p>
-        <p><strong>Tempo Estimado:</strong> <span id="time-val">-</span> min</p>
-      </div>
-
       <div class="comparison-box fast-box">
-        <h4>🔴 Rota Mais Rápida (Sem Restrição)</h4>
+        <h4>⚡ Rota Mais Rápida</h4>
         <p><strong>Distância:</strong> <span id="fast-dist-val">-</span> km</p>
         <p><strong>Tempo Estimado:</strong> <span id="fast-time-val">-</span> min</p>
       </div>
 
-      <div id="alert-box" class="alert-info hidden">
-        ⚠️ <strong>Alerta de Restrição:</strong> A Rota Segura faz um desvio de <span id="diff-dist">0</span> km (+<span id="diff-time">0</span> min) para evitar viadutos baixos ou pontes com limite de peso.
+      <div id="status-card" class="alert-info hidden">
+        <!-- O JS preencherá dinamicamente com mensagens de alerta -->
       </div>
     </div>
   </div>
