@@ -8,8 +8,8 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap'
 }).addTo(map);
 
-let safeRouteLayer = null;
-let fastRouteLayer = null;
+let routeLayer = null;
+let warningMarkers = [];
 let selectedOriginCoords = null;
 let selectedDestCoords = null;
 
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupAutocomplete('destination', 'dest-suggestions', (coords) => { selectedDestCoords = coords; });
 });
 
-// 5. Função para consultar a API OpenRouteService
+// 5. Chamada de Rota à API
 async function fetchRoute(profile, coordinates, restrictions = null) {
   const url = `https://api.openrouteservice.org/v2/directions/${profile}/geojson`;
   
@@ -140,12 +140,12 @@ async function fetchRoute(profile, coordinates, restrictions = null) {
   return await response.json();
 }
 
-// 6. Submissão e Comparação de Rotas
+// 6. Submissão e Mapeamento de Pontos de Alerta
 document.getElementById('truck-form').addEventListener('submit', async (e) => {
   e.preventDefault();
 
   const btn = document.getElementById('btn-calculate');
-  btn.innerText = "Calculando comparativo...";
+  btn.innerText = "Analisando rota...";
   btn.disabled = true;
 
   try {
@@ -159,75 +159,127 @@ document.getElementById('truck-form').addEventListener('submit', async (e) => {
     const destCoords = selectedDestCoords || await getCoordinates(destText);
     const coordsPair = [originCoords, destCoords];
 
-    // Faz as 2 chamadas simultaneamente
-    const [safeData, fastData] = await Promise.all([
-      fetchRoute('driving-hgv', coordsPair, { height, width, weight }),
-      fetchRoute('driving-car', coordsPair)
+    // Busca a Rota Mais Rápida e a Rota com Filtros de Carga
+    const [fastData, safeData] = await Promise.all([
+      fetchRoute('driving-car', coordsPair),
+      fetchRoute('driving-hgv', coordsPair, { height, width, weight })
     ]);
 
-    if (safeData.features && safeData.features.length > 0) {
-      const safeSummary = safeData.features[0].properties.summary;
+    if (fastData.features && fastData.features.length > 0) {
       const fastSummary = fastData.features[0].properties.summary;
-
-      const safeDistKm = (safeSummary.distance / 1000).toFixed(1);
-      const safeTimeMin = Math.round(safeSummary.duration / 60);
-
       const fastDistKm = (fastSummary.distance / 1000).toFixed(1);
       const fastTimeMin = Math.round(fastSummary.duration / 60);
 
-      // Preenche dados no painel
-      document.getElementById('dist-val').innerText = safeDistKm;
-      document.getElementById('time-val').innerText = safeTimeMin;
-      
       document.getElementById('fast-dist-val').innerText = fastDistKm;
       document.getElementById('fast-time-val').innerText = fastTimeMin;
 
-      // Calcula a diferença entre as rotas
-      const diffDist = (safeDistKm - fastDistKm).toFixed(1);
-      const diffTime = safeTimeMin - fastTimeMin;
+      // Desenha a Rota Mais Rápida no Mapa
+      renderFastRoute(fastData);
 
-      const alertBox = document.getElementById('alert-box');
-      if (diffDist > 0.5 || diffTime > 2) {
-        document.getElementById('diff-dist').innerText = Math.max(0, diffDist);
-        document.getElementById('diff-time').innerText = Math.max(0, diffTime);
-        alertBox.classList.remove('hidden');
+      // Identifica onde a Rota Segura teve que desviar da Rota Rápida
+      const criticalPoints = findCriticalPoints(fastData, safeData);
+      plotWarningMarkers(criticalPoints, height, weight);
+
+      // Atualiza o painel de status
+      const statusCard = document.getElementById('status-card');
+      statusCard.classList.remove('hidden', 'alert-warning', 'alert-success');
+
+      if (criticalPoints.length > 0) {
+        statusCard.classList.add('alert-warning');
+        statusCard.innerHTML = `⚠️ <strong>Atenção!</strong> Foram identificados <strong>${criticalPoints.length} ponto(s) crítico(s)</strong> de restrição física (viaduto/ponte/limite de peso) na Rota Mais Rápida. Verifique os marcadores ⚠️ no mapa.`;
       } else {
-        alertBox.classList.add('hidden');
+        statusCard.classList.add('alert-success');
+        statusCard.innerHTML = `✅ <strong>Rota Livre!</strong> A rota mais rápida não apresenta bloqueios críticos para as dimensões informadas (${height}m alt / ${weight}t).`;
       }
 
       document.getElementById('route-info').classList.remove('hidden');
-
-      // Desenha as duas rotas no mapa
-      renderRoutesOnMap(safeData, fastData);
     } else {
-      alert('Não foi possível calcular a rota com as restrições informadas.');
+      alert('Não foi possível calcular a rota para os pontos fornecidos.');
     }
 
   } catch (error) {
     console.error(error);
-    alert(error.message || 'Erro ao comunicar com a API de rotas.');
+    alert(error.message || 'Erro ao processar o diagnóstico.');
   } finally {
-    btn.innerText = "Calcular e Comparar Rotas";
+    btn.innerText = "Analisar Pontos de Alerta";
     btn.disabled = false;
     selectedOriginCoords = null;
     selectedDestCoords = null;
   }
 });
 
-// 7. Renderiza as duas linhas no mapa
-function renderRoutesOnMap(safeGeojson, fastGeojson) {
-  if (safeRouteLayer) map.removeLayer(safeRouteLayer);
-  if (fastRouteLayer) map.removeLayer(fastRouteLayer);
+// 7. Algoritmo para identificar desvios críticos entre a rota rápida e a segura
+function findCriticalPoints(fastData, safeData) {
+  if (!safeData.features || safeData.features.length === 0) return [];
 
-  // Linha Vermelha (Rota Mais Rápida / Sem Restrições)
-  fastRouteLayer = L.geoJSON(fastGeojson, {
-    style: { color: '#ef4444', weight: 4, opacity: 0.6, dashArray: '8, 8' }
+  const fastCoords = fastData.features[0].geometry.coordinates;
+  const safeCoords = safeData.features[0].geometry.coordinates;
+
+  const criticalPoints = [];
+  const step = Math.max(1, Math.floor(fastCoords.length / 20)); // Amostragem de pontos ao longo da rota
+
+  for (let i = 0; i < fastCoords.length; i += step) {
+    const ptFast = fastCoords[i]; // [lng, lat]
+
+    // Procura o ponto mais próximo na rota de caminhão
+    let minDistance = Infinity;
+    for (let j = 0; j < safeCoords.length; j += Math.max(1, Math.floor(safeCoords.length / 100))) {
+      const ptSafe = safeCoords[j];
+      const dist = Math.hypot(ptFast[0] - ptSafe[0], ptFast[1] - ptSafe[1]);
+      if (dist < minDistance) minDistance = dist;
+    }
+
+    // Se o ponto da rota mais rápida está muito distante da rota segura (desvio > ~300m em graus)
+    if (minDistance > 0.003) {
+      // Garante distância mínima entre alertas para não poluir o mapa
+      const isNewArea = criticalPoints.every(p => Math.hypot(p[0] - ptFast[0], p[1] - ptFast[1]) > 0.015);
+      if (isNewArea) {
+        criticalPoints.push(ptFast);
+      }
+    }
+  }
+
+  return criticalPoints;
+}
+
+// 8. Renderiza a Rota Rápida no mapa
+function renderFastRoute(fastGeojson) {
+  if (routeLayer) map.removeLayer(routeLayer);
+  
+  routeLayer = L.geoJSON(fastGeojson, {
+    style: { color: '#0284c7', weight: 6, opacity: 0.85 }
   }).addTo(map);
 
-  // Linha Azul (Rota Segura Caminhão)
-  safeRouteLayer = L.geoJSON(safeGeojson, {
-    style: { color: '#0284c7', weight: 6, opacity: 0.9 }
-  }).addTo(map);
+  map.fitBounds(routeLayer.getBounds());
+}
 
-  map.fitBounds(safeRouteLayer.getBounds());
+// 9. Desenha os Marcadores de Alerta ⚠️
+function plotWarningMarkers(points, height, weight) {
+  // Limpa marcadores anteriores
+  warningMarkers.forEach(m => map.removeLayer(m));
+  warningMarkers = [];
+
+  points.forEach((pt, index) => {
+    const lat = pt[1];
+    const lng = pt[0];
+
+    const customIcon = L.divIcon({
+      className: 'warning-marker',
+      html: '⚠️',
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
+    });
+
+    const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+    
+    marker.bindPopup(`
+      <div style="font-family: sans-serif; font-size: 13px;">
+        <strong style="color: #dc2626;">⚠️ Ponto Crítico #${index + 1}</strong><br>
+        Risco de restrição física para seu veículo (Ex: Viaduto baixo < ${height}m ou Ponte com limite de peso < ${weight}t).<br>
+        <small style="color: #64748b;">A Rota de Carga evita este trecho.</small>
+      </div>
+    `);
+
+    warningMarkers.push(marker);
+  });
 }
