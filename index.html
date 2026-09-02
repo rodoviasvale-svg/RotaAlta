@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RotaTruck - Diagnóstico de Rota</title>
+  <title>RotaTruck - Diagnóstico e Desvio de Rotas</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
   
@@ -14,7 +14,7 @@
 <body>
 
   <div class="sidebar">
-    <h2>🚚 RotaTruck - Diagnóstico de Rota</h2>
+    <h2>🚚 RotaTruck - Diagnóstico</h2>
     
     <form id="truck-form" autocomplete="off">
       <h3>1. Dimensões do Veículo</h3>
@@ -58,13 +58,24 @@
       <h3>📊 Resumo da Viagem</h3>
       
       <div class="comparison-box fast-box">
-        <h4>⚡ Rota Mais Rápida</h4>
+        <h4>⚡ Rota Atual (Mais Rápida)</h4>
         <p><strong>Distância:</strong> <span id="fast-dist-val">-</span> km</p>
         <p><strong>Tempo Estimado:</strong> <span id="fast-time-val">-</span> min</p>
       </div>
 
       <div id="status-card" class="alert-info hidden">
-        <!-- O JS preencherá dinamicamente com mensagens de alerta -->
+        <!-- O JS preencherá dinamicamente -->
+      </div>
+
+      <!-- Botão de Ação para Rota Segura -->
+      <button id="btn-apply-bypass" class="btn-bypass hidden">
+        🛡️ Traçar Rota de Desvio Segura
+      </button>
+
+      <div id="safe-summary" class="comparison-box safe-box hidden">
+        <h4>🔵 Rota de Desvio Aplicada</h4>
+        <p><strong>Nova Distância:</strong> <span id="safe-dist-val">-</span> km</p>
+        <p><strong>Novo Tempo:</strong> <span id="safe-time-val">-</span> min</p>
       </div>
     </div>
   </div>
