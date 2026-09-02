@@ -181,3 +181,30 @@ button:hover { background: #0369a1; }
   line-height: 24px;
   box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
 }
+
+/* Botão de Desvio de Segurança */
+.btn-bypass {
+  margin-top: 12px;
+  width: 100%;
+  padding: 12px;
+  background: #0284c7;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-bypass:hover {
+  background: #0369a1;
+}
+
+.safe-box {
+  margin-top: 12px;
+  background: rgba(2, 132, 199, 0.15);
+  border-left: 4px solid #0284c7;
+  padding: 10px;
+  border-radius: 6px;
+}
